@@ -16,7 +16,7 @@ CertGen is a powerful command-line tool for generating and managing certificates
 ## Installation
 
 ```bash
-go install github.com/yourusername/certgen@latest
+go install github.com/hypertriton/certgen@latest
 ```
 
 ## Usage
