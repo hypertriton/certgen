@@ -74,6 +74,13 @@ type SignConfig struct {
 	NoProgress bool   `yaml:"-"`          // Not serialized to YAML
 }
 
+// TrustConfig holds the configuration for trusting a certificate
+type TrustConfig struct {
+	CertPath   string `yaml:"certPath"`  // Path to the certificate to trust
+	OutputDir  string `yaml:"outputDir"` // Output directory for the trusted certificate
+	NoProgress bool   `yaml:"-"`         // Not serialized to YAML
+}
+
 // getClassRequirements returns the requirements for a certificate class
 func getClassRequirements(class CertificateClass) (minKeySize int, maxValidityDays int) {
 	switch class {
@@ -118,8 +125,6 @@ func (c *CAConfig) Validate() error {
 	// Validate validity period
 	if c.ValidityDays <= 0 {
 		c.ValidityDays = maxValidityDays // Default to maximum for class
-	} else if c.ValidityDays > maxValidityDays {
-		return fmt.Errorf("validity period cannot exceed %d days for Class %d CA", maxValidityDays, c.Class)
 	}
 
 	// Root certificate specific validations
@@ -132,9 +137,14 @@ func (c *CAConfig) Validate() error {
 		if c.KeySize < 4096 {
 			return fmt.Errorf("root certificates must use at least 4096-bit keys")
 		}
-		// Root certificates should have longer validity
+		// Root certificates should have longer validity (minimum 5 years)
 		if c.ValidityDays < 365*5 {
 			return fmt.Errorf("root certificates should have at least 5 years validity")
+		}
+	} else {
+		// For non-root certificates, enforce class-specific validity limits
+		if c.ValidityDays > maxValidityDays {
+			return fmt.Errorf("validity period cannot exceed %d days for Class %d CA", maxValidityDays, c.Class)
 		}
 	}
 
@@ -247,6 +257,27 @@ func (c *SignConfig) Validate() error {
 	// Check if CA private key exists
 	if _, err := os.Stat(c.CAKeyPath); os.IsNotExist(err) {
 		return fmt.Errorf("CA private key not found at %s", c.CAKeyPath)
+	}
+
+	// Set default output directory
+	if c.OutputDir == "" {
+		c.OutputDir = "certs"
+	}
+	c.OutputDir = filepath.Clean(c.OutputDir)
+
+	return nil
+}
+
+// Validate checks and sets default values for TrustConfig
+func (c *TrustConfig) Validate() error {
+	// Validate certificate path
+	if c.CertPath == "" {
+		return fmt.Errorf("certPath is required")
+	}
+
+	// Check if certificate exists
+	if _, err := os.Stat(c.CertPath); os.IsNotExist(err) {
+		return fmt.Errorf("certificate not found at %s", c.CertPath)
 	}
 
 	// Set default output directory

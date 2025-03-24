@@ -1,0 +1,11 @@
+# Trust Configuration
+# This file configures settings for trusting a certificate in the system
+
+# Path to the certificate to trust
+certPath: "certs/ca.crt"
+
+# Output directory for the trusted certificate
+outputDir: "certs/trusted"
+
+# Disable progress display (optional)
+# noProgress: false 

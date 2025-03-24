@@ -206,3 +206,17 @@ func (p *GenerationProgress) Complete() {
 		fmt.Printf("\n%s completed in %s\n", p.operation, duration.Round(time.Millisecond))
 	}
 }
+
+// CompleteProgress implements the ProgressReporter interface
+func (p *GenerationProgress) CompleteProgress() {
+	p.Complete()
+}
+
+// StartProgress implements the ProgressReporter interface
+func (p *GenerationProgress) StartProgress(message string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("%s...\n", message)
+	}
+}

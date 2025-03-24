@@ -12,13 +12,13 @@ commonName: "example.com"
 organization: "Example Organization"
 organizationalUnit: "Web Services"
 country: "US"
-province: "California"
-locality: "San Francisco"
+province: "Texas"
+locality: "Starbase"
 
 # Certificate Settings
 # Validity period in days (class-dependent maximums)
 validityDays: 365  # 1 year
-keySize: 2048      # Minimum for Class 1
+keySize: 3072      # Minimum for Class 2
 
 # DNS Names for the certificate
 # Include all domains and subdomains that this certificate will be used for

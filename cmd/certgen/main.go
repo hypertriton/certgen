@@ -147,7 +147,7 @@ func main() {
 		Use:   "certgen",
 		Short: "A tool for generating and managing certificates",
 		Long: `certgen is a tool for generating and managing certificates.
-It supports generating CA certificates, server certificates, and signing certificates.`,
+It supports generating CA certificates, server certificates, and client certificates.`,
 	}
 
 	// Global flags
@@ -157,7 +157,7 @@ It supports generating CA certificates, server certificates, and signing certifi
 	// CA command
 	caCmd := &cobra.Command{
 		Use:   "ca",
-		Short: "Generate a Certificate Authority certificate",
+		Short: "Generate a CA certificate",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := &cert.CAConfig{
 				NoProgress: noProgress,
@@ -188,7 +188,7 @@ It supports generating CA certificates, server certificates, and signing certifi
 	// Sign command
 	signCmd := &cobra.Command{
 		Use:   "sign",
-		Short: "Sign an existing certificate with a CA",
+		Short: "Sign a certificate with a CA",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := &cert.SignConfig{
 				NoProgress: noProgress,
@@ -200,7 +200,22 @@ It supports generating CA certificates, server certificates, and signing certifi
 		},
 	}
 
-	rootCmd.AddCommand(caCmd, certCmd, signCmd)
+	// Trust command
+	trustCmd := &cobra.Command{
+		Use:   "trust",
+		Short: "Trust a CA certificate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &cert.TrustConfig{
+				NoProgress: noProgress,
+			}
+			if err := loadConfig(configFile, config); err != nil {
+				return err
+			}
+			return cert.TrustCertificate(config)
+		},
+	}
+
+	rootCmd.AddCommand(caCmd, certCmd, signCmd, trustCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

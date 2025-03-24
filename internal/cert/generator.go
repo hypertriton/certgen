@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"certgen/internal/system"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -354,9 +355,14 @@ func savePrivateKey(path string, privateKey *rsa.PrivateKey) error {
 	}
 	defer keyOut.Close()
 
+	privKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return fmt.Errorf("marshaling private key: %w", err)
+	}
+
 	if err := pem.Encode(keyOut, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		Type:  "PRIVATE KEY",
+		Bytes: privKeyBytes,
 	}); err != nil {
 		return fmt.Errorf("encoding private key: %w", err)
 	}
@@ -480,6 +486,45 @@ func SignCertificate(config *SignConfig) error {
 		return fmt.Errorf("failed to write signed certificate: %w", err)
 	}
 	progress.CompleteSaving()
+
+	return nil
+}
+
+// TrustCertificate trusts a certificate in the system
+func TrustCertificate(config *TrustConfig) error {
+	progress := NewGenerationProgress("Certificate Trust", !config.NoProgress)
+	defer progress.Complete()
+
+	if err := config.Validate(); err != nil {
+		return fmt.Errorf("invalid trust configuration: %w", err)
+	}
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Read the certificate
+	progress.StartLoading()
+	certPEM, err := os.ReadFile(config.CertPath)
+	if err != nil {
+		return fmt.Errorf("failed to read certificate: %w", err)
+	}
+	progress.CompleteLoading()
+
+	// Copy the certificate to the output directory
+	progress.StartSaving()
+	trustedCertPath := filepath.Join(config.OutputDir, "trusted.crt")
+	if err := os.WriteFile(trustedCertPath, certPEM, 0644); err != nil {
+		return fmt.Errorf("failed to write trusted certificate: %w", err)
+	}
+	progress.CompleteSaving()
+
+	// Install and trust the certificate
+	trustManager := system.NewCertificateTrustManager(progress)
+	if err := trustManager.InstallAndTrustCA(trustedCertPath); err != nil {
+		return fmt.Errorf("failed to install and trust certificate: %w", err)
+	}
 
 	return nil
 }
