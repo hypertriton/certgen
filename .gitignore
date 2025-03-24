@@ -12,3 +12,5 @@ go.sum
 *.p8
 
 *.log*
+
+*.DS_Store
