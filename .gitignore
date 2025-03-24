@@ -1,0 +1,14 @@
+test
+certs
+certgen
+go.sum
+
+*.crt
+*.key
+*.csr
+*.pem
+*.der
+*.p12
+*.p8
+
+*.log*
