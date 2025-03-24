@@ -1,0 +1,14 @@
+# Server Certificate Configuration
+commonName: "example.com"
+organization: "Example Organization"
+organizationalUnit: "Web Services"
+country: "US"
+province: "California"
+locality: "San Francisco"
+validityDays: 365  # 1 year
+keySize: 2048
+dnsNames:
+  - "example.com"
+  - "*.example.com"
+  - "www.example.com"
+outputDir: "certs" 

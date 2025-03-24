@@ -1,0 +1,19 @@
+# Certificate Authority Configuration
+commonName: "Trusted Local Class III Root CA"
+organization: "Trusted Development"
+organizationalUnit: "Security"
+country: "US"
+province: "Texas"
+locality: "Fort Worth"
+validityDays: 3650  # 10 years
+keySize: 4096
+outputDir: "certs"
+
+# Class 3 CA Configuration
+class3: true  # Enable Class 3 CA features
+crlDistributionPoints:
+  - "http://crl.example.com/root.crl"
+ocspServers:
+  - "http://ocsp.example.com"
+issuingCertificateUrls:
+  - "http://example.com/ca.crt" 
