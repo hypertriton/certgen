@@ -1,14 +1,34 @@
-# Server Certificate Configuration
+# Server/Client Certificate Configuration
+# This file configures the settings for generating a certificate
+
+# Certificate Class (1-3)
+# 1: Low-assurance (email, personal use)
+# 2: Medium-assurance (organization validation)
+# 3: High-assurance (extended validation)
+class: 2
+
+# Basic Information
 commonName: "example.com"
 organization: "Example Organization"
 organizationalUnit: "Web Services"
 country: "US"
 province: "California"
 locality: "San Francisco"
+
+# Certificate Settings
+# Validity period in days (class-dependent maximums)
 validityDays: 365  # 1 year
-keySize: 2048
+keySize: 2048      # Minimum for Class 1
+
+# DNS Names for the certificate
+# Include all domains and subdomains that this certificate will be used for
 dnsNames:
   - "example.com"
   - "*.example.com"
   - "www.example.com"
-outputDir: "certs" 
+
+# Output Directory
+outputDir: "certs"
+
+# Optional: Disable progress display
+# noProgress: false 

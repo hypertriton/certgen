@@ -164,6 +164,29 @@ func createCATemplate(config *CAConfig) (*x509.Certificate, error) {
 		template.PolicyIdentifiers = []asn1.ObjectIdentifier{{2, 5, 29, 32, 0}} // Any Policy
 	}
 
+	// Root certificate specific settings
+	if config.Type == Root {
+		// Root certificates are self-signed
+		template.AuthorityKeyId = template.SubjectKeyId
+		// Root certificates should have longer validity
+		template.NotAfter = now.AddDate(0, 0, config.ValidityDays)
+		// Root certificates should have specific key usage
+		template.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature
+		// Root certificates should have specific extensions
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageCodeSigning,
+			x509.ExtKeyUsageEmailProtection,
+			x509.ExtKeyUsageTimeStamping,
+		}
+		// Root certificates should have specific policies
+		template.PolicyIdentifiers = []asn1.ObjectIdentifier{
+			{2, 5, 29, 32, 0}, // Any Policy
+			{2, 5, 29, 32, 1}, // CA Policy
+		}
+	}
+
 	return template, nil
 }
 

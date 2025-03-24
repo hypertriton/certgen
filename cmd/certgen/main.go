@@ -80,14 +80,17 @@ var completeHelpCmd = &cobra.Command{
 		fmt.Fprintln(w, "--key-size\tKey size in bits\tClass dependent")
 		fmt.Fprintln(w, "--output-dir\tOutput directory for certificates\t./certs")
 		fmt.Fprintln(w, "--no-progress\tDisable progress display\tfalse")
+		fmt.Fprintln(w, "--root\tGenerate a root certificate\tfalse")
 
 		// Examples
 		fmt.Fprintln(w, "\nExamples:")
-		fmt.Fprintln(w, "1. Generate a Class 1 CA certificate:")
-		fmt.Fprintln(w, "   certgen ca --class 1 --common-name \"My Root CA\" --org \"My Company\"")
-		fmt.Fprintln(w, "\n2. Generate a Class 2 server certificate:")
+		fmt.Fprintln(w, "1. Generate a Root CA certificate:")
+		fmt.Fprintln(w, "   certgen ca --root --class 2 --common-name \"My Root CA\" --org \"My Company\"")
+		fmt.Fprintln(w, "\n2. Generate an Intermediate CA certificate:")
+		fmt.Fprintln(w, "   certgen ca --class 2 --common-name \"My Intermediate CA\" --org \"My Company\"")
+		fmt.Fprintln(w, "\n3. Generate a server certificate:")
 		fmt.Fprintln(w, "   certgen cert --class 2 --common-name \"example.com\" --org \"My Company\" --dns-names \"example.com,www.example.com\"")
-		fmt.Fprintln(w, "\n3. Install and trust a CA certificate:")
+		fmt.Fprintln(w, "\n4. Install and trust a CA certificate:")
 		fmt.Fprintln(w, "   certgen install --cert path/to/ca.crt")
 		fmt.Fprintln(w, "   certgen trust --cert path/to/ca.crt")
 

@@ -17,6 +17,18 @@ const (
 	Class3
 )
 
+// CertificateType represents the type of certificate
+type CertificateType int
+
+const (
+	// Root is a self-signed root certificate
+	Root CertificateType = iota
+	// Intermediate is a CA certificate signed by a root or intermediate
+	Intermediate
+	// Leaf is an end-entity certificate
+	Leaf
+)
+
 // CAConfig holds the configuration for a Certificate Authority
 type CAConfig struct {
 	CommonName         string           `yaml:"commonName"`
@@ -30,6 +42,7 @@ type CAConfig struct {
 	OutputDir          string           `yaml:"outputDir"`
 	NoProgress         bool             `yaml:"-"` // Not serialized to YAML
 	Class              CertificateClass `yaml:"class"`
+	Type               CertificateType  `yaml:"type"`
 }
 
 // CertConfig holds the configuration for a certificate
@@ -94,6 +107,22 @@ func (c *CAConfig) Validate() error {
 		c.ValidityDays = maxValidityDays // Default to maximum for class
 	} else if c.ValidityDays > maxValidityDays {
 		return fmt.Errorf("validity period cannot exceed %d days for Class %d CA", maxValidityDays, c.Class)
+	}
+
+	// Root certificate specific validations
+	if c.Type == Root {
+		// Root certificates must be Class 2 or higher
+		if c.Class < Class2 {
+			return fmt.Errorf("root certificates must be Class 2 or higher")
+		}
+		// Root certificates must use at least 4096-bit keys
+		if c.KeySize < 4096 {
+			return fmt.Errorf("root certificates must use at least 4096-bit keys")
+		}
+		// Root certificates should have longer validity
+		if c.ValidityDays < 365*5 {
+			return fmt.Errorf("root certificates should have at least 5 years validity")
+		}
 	}
 
 	// Set default output directory
