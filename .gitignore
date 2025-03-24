@@ -9,3 +9,5 @@ certs
 
 .DS_Store
 *.DS_Store
+
+certgen
