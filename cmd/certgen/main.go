@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"certgen/internal/cert"
 )
@@ -118,9 +119,91 @@ func init() {
 	rootCmd.AddCommand(completeHelpCmd)
 }
 
+// loadConfig loads a YAML configuration file into the provided config struct
+func loadConfig(configFile string, config interface{}) error {
+	if configFile == "" {
+		return fmt.Errorf("configuration file is required")
+	}
+
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return fmt.Errorf("reading config file: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, config); err != nil {
+		return fmt.Errorf("parsing config file: %w", err)
+	}
+
+	return nil
+}
+
 func main() {
+	var (
+		configFile string
+		noProgress bool
+	)
+
+	rootCmd := &cobra.Command{
+		Use:   "certgen",
+		Short: "A tool for generating and managing certificates",
+		Long: `certgen is a tool for generating and managing certificates.
+It supports generating CA certificates, server certificates, and signing certificates.`,
+	}
+
+	// Global flags
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Path to configuration file")
+	rootCmd.PersistentFlags().BoolVar(&noProgress, "no-progress", false, "Disable progress display")
+
+	// CA command
+	caCmd := &cobra.Command{
+		Use:   "ca",
+		Short: "Generate a Certificate Authority certificate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &cert.CAConfig{
+				NoProgress: noProgress,
+			}
+			if err := loadConfig(configFile, config); err != nil {
+				return err
+			}
+			_, err := cert.GenerateCA(config)
+			return err
+		},
+	}
+
+	// Certificate command
+	certCmd := &cobra.Command{
+		Use:   "cert",
+		Short: "Generate a server or client certificate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &cert.CertConfig{
+				NoProgress: noProgress,
+			}
+			if err := loadConfig(configFile, config); err != nil {
+				return err
+			}
+			return cert.GenerateCertificate(config)
+		},
+	}
+
+	// Sign command
+	signCmd := &cobra.Command{
+		Use:   "sign",
+		Short: "Sign an existing certificate with a CA",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &cert.SignConfig{
+				NoProgress: noProgress,
+			}
+			if err := loadConfig(configFile, config); err != nil {
+				return err
+			}
+			return cert.SignCertificate(config)
+		},
+	}
+
+	rootCmd.AddCommand(caCmd, certCmd, signCmd)
+
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

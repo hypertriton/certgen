@@ -2,6 +2,7 @@ package cert
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/schollz/progressbar/v3"
@@ -55,130 +56,153 @@ func (p *ProgressTracker) Complete() {
 
 // GenerationProgress tracks the progress of certificate generation
 type GenerationProgress struct {
-	KeyGenBar    *ProgressTracker
-	TemplateBar  *ProgressTracker
-	SigningBar   *ProgressTracker
-	SaveBar      *ProgressTracker
-	InstallBar   *ProgressTracker
-	startTime    time.Time
-	description  string
-	showProgress bool
+	operation string
+	enabled   bool
+	startTime time.Time
+	mu        sync.Mutex
 }
 
-// NewGenerationProgress creates a new generation progress tracker
-func NewGenerationProgress(description string, showProgress bool) *GenerationProgress {
-	if !showProgress {
-		return &GenerationProgress{
-			description:  description,
-			showProgress: false,
-		}
-	}
-
-	fmt.Printf("\n[bold]%s[reset]\n\n", description)
-
+// NewGenerationProgress creates a new progress tracker
+func NewGenerationProgress(operation string, enabled bool) *GenerationProgress {
 	return &GenerationProgress{
-		KeyGenBar:    NewProgressTracker("Generating Key"),
-		TemplateBar:  NewProgressTracker("Creating Template"),
-		SigningBar:   NewProgressTracker("Signing Certificate"),
-		SaveBar:      NewProgressTracker("Saving Files"),
-		InstallBar:   NewProgressTracker("Installing Certificate"),
-		startTime:    time.Now(),
-		description:  description,
-		showProgress: true,
+		operation: operation,
+		enabled:   enabled,
+		startTime: time.Now(),
 	}
 }
 
-// StartProgress starts a generic progress operation
-func (g *GenerationProgress) StartProgress(description string) {
-	if !g.showProgress {
-		return
+// StartKeyGen indicates the start of key generation
+func (p *GenerationProgress) StartKeyGen() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Generating private key for %s...\n", p.operation)
 	}
-	g.InstallBar = NewProgressTracker(description)
-	g.InstallBar.Step(50)
 }
 
-// CompleteProgress completes a generic progress operation
-func (g *GenerationProgress) CompleteProgress() {
-	if !g.showProgress {
-		return
+// CompleteKeyGen indicates the completion of key generation
+func (p *GenerationProgress) CompleteKeyGen() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ Private key generated\n")
 	}
-	g.InstallBar.Step(50)
-	g.InstallBar.Complete()
 }
 
-// StartKeyGen starts the key generation progress
-func (g *GenerationProgress) StartKeyGen() {
-	if !g.showProgress {
-		return
+// StartTemplate indicates the start of template creation
+func (p *GenerationProgress) StartTemplate() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Creating certificate template for %s...\n", p.operation)
 	}
-	g.startTime = time.Now()
 }
 
-// CompleteKeyGen completes the key generation progress
-func (g *GenerationProgress) CompleteKeyGen() {
-	if !g.showProgress {
-		return
+// CompleteTemplate indicates the completion of template creation
+func (p *GenerationProgress) CompleteTemplate() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ Certificate template created\n")
 	}
-	g.KeyGenBar.Step(100)
-	g.KeyGenBar.Complete()
 }
 
-// StartTemplate starts the template creation progress
-func (g *GenerationProgress) StartTemplate() {
-	if !g.showProgress {
-		return
+// StartSigning indicates the start of certificate signing
+func (p *GenerationProgress) StartSigning() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Signing certificate for %s...\n", p.operation)
 	}
-	g.TemplateBar.Step(50)
 }
 
-// CompleteTemplate completes the template creation progress
-func (g *GenerationProgress) CompleteTemplate() {
-	if !g.showProgress {
-		return
+// CompleteSigning indicates the completion of certificate signing
+func (p *GenerationProgress) CompleteSigning() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ Certificate signed\n")
 	}
-	g.TemplateBar.Step(50)
-	g.TemplateBar.Complete()
 }
 
-// StartSigning starts the certificate signing progress
-func (g *GenerationProgress) StartSigning() {
-	if !g.showProgress {
-		return
+// StartSaving indicates the start of file saving
+func (p *GenerationProgress) StartSaving() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Saving certificate and key for %s...\n", p.operation)
 	}
-	g.SigningBar.Step(50)
 }
 
-// CompleteSigning completes the certificate signing progress
-func (g *GenerationProgress) CompleteSigning() {
-	if !g.showProgress {
-		return
+// CompleteSaving indicates the completion of file saving
+func (p *GenerationProgress) CompleteSaving() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ Certificate and key saved\n")
 	}
-	g.SigningBar.Step(50)
-	g.SigningBar.Complete()
 }
 
-// StartSaving starts the file saving progress
-func (g *GenerationProgress) StartSaving() {
-	if !g.showProgress {
-		return
+// StartLoading indicates the start of certificate loading
+func (p *GenerationProgress) StartLoading() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Loading certificate for %s...\n", p.operation)
 	}
-	g.SaveBar.Step(50)
 }
 
-// CompleteSaving completes the file saving progress
-func (g *GenerationProgress) CompleteSaving() {
-	if !g.showProgress {
-		return
+// CompleteLoading indicates the completion of certificate loading
+func (p *GenerationProgress) CompleteLoading() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ Certificate loaded\n")
 	}
-	g.SaveBar.Step(50)
-	g.SaveBar.Complete()
 }
 
-// Complete completes all progress bars and shows completion message
-func (g *GenerationProgress) Complete() {
-	if !g.showProgress {
-		return
+// StartKeyLoading indicates the start of private key loading
+func (p *GenerationProgress) StartKeyLoading() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Loading private key for %s...\n", p.operation)
 	}
-	duration := time.Since(g.startTime).Round(time.Millisecond)
-	fmt.Printf("\n✨ %s completed in %v\n\n", g.description, duration)
+}
+
+// CompleteKeyLoading indicates the completion of private key loading
+func (p *GenerationProgress) CompleteKeyLoading() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ Private key loaded\n")
+	}
+}
+
+// StartCALoading indicates the start of CA loading
+func (p *GenerationProgress) StartCALoading() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("Loading CA certificate and key for %s...\n", p.operation)
+	}
+}
+
+// CompleteCALoading indicates the completion of CA loading
+func (p *GenerationProgress) CompleteCALoading() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		fmt.Printf("✓ CA certificate and key loaded\n")
+	}
+}
+
+// Complete indicates the completion of the entire operation
+func (p *GenerationProgress) Complete() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.enabled {
+		duration := time.Since(p.startTime)
+		fmt.Printf("\n%s completed in %s\n", p.operation, duration.Round(time.Millisecond))
+	}
 }

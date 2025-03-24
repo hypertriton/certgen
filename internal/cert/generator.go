@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -70,44 +71,96 @@ func GenerateCA(config *CAConfig) (*Result, error) {
 	}, nil
 }
 
-// GenerateCertificate generates a certificate signed by the provided CA
-func GenerateCertificate(config *CertConfig, ca *Result) error {
-	progress := NewGenerationProgress("Server Certificate", !config.NoProgress)
-	defer progress.Complete()
-
+// GenerateCertificate generates a certificate using the provided configuration
+func GenerateCertificate(config *CertConfig) error {
 	if err := config.Validate(); err != nil {
 		return fmt.Errorf("invalid certificate configuration: %w", err)
 	}
 
-	if err := ensureWritableDirectory(config.OutputDir); err != nil {
-		return fmt.Errorf("output directory error: %w", err)
+	// Create certificate template
+	template, err := createCertTemplate(config)
+	if err != nil {
+		return fmt.Errorf("failed to create certificate template: %w", err)
 	}
 
 	// Generate private key
-	progress.StartKeyGen()
-	privateKey, err := generatePrivateKey(config.KeySize)
+	privKey, err := generatePrivateKey(config.KeySize)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate private key: %w", err)
 	}
-	progress.CompleteKeyGen()
 
-	// Create certificate template
-	progress.StartTemplate()
-	template, err := createCertTemplate(config)
+	// Load CA certificate and private key
+	caCert, caKey, err := loadCA(config.CACert, config.CAKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load CA: %w", err)
 	}
-	progress.CompleteTemplate()
 
-	// Sign certificate
-	progress.StartSigning()
-	_, err = generateAndSaveCertificate(template, ca.Certificate, &privateKey.PublicKey, ca.PrivateKey, config.OutputDir, "cert", progress)
+	// Generate certificate
+	certDER, err := x509.CreateCertificate(rand.Reader, template, caCert, &privKey.PublicKey, caKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create certificate: %w", err)
 	}
-	progress.CompleteSigning()
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Write certificate and private key
+	certPath := filepath.Join(config.OutputDir, "cert.crt")
+	keyPath := filepath.Join(config.OutputDir, "cert.key")
+
+	if err := writePEM(certPath, "CERTIFICATE", certDER); err != nil {
+		return fmt.Errorf("failed to write certificate: %w", err)
+	}
+
+	privKeyPEM, err := x509.MarshalPKCS8PrivateKey(privKey)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private key: %w", err)
+	}
+
+	if err := writePEM(keyPath, "PRIVATE KEY", privKeyPEM); err != nil {
+		return fmt.Errorf("failed to write private key: %w", err)
+	}
 
 	return nil
+}
+
+// loadCA loads a CA certificate and private key from files
+func loadCA(certPath, keyPath string) (*x509.Certificate, crypto.PrivateKey, error) {
+	// Read CA certificate
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read CA certificate: %w", err)
+	}
+
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return nil, nil, fmt.Errorf("failed to decode CA certificate")
+	}
+
+	caCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse CA certificate: %w", err)
+	}
+
+	// Read CA private key
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read CA private key: %w", err)
+	}
+
+	block, _ = pem.Decode(keyPEM)
+	if block == nil {
+		return nil, nil, fmt.Errorf("failed to decode CA private key")
+	}
+
+	caKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse CA private key: %w", err)
+	}
+
+	return caCert, caKey, nil
 }
 
 // Helper functions
@@ -337,6 +390,96 @@ func ensureWritableDirectory(dir string) error {
 	}
 	f.Close()
 	os.Remove(testFile)
+
+	return nil
+}
+
+func writePEM(path, blockType string, data []byte) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	if err := pem.Encode(file, &pem.Block{Type: blockType, Bytes: data}); err != nil {
+		return fmt.Errorf("failed to encode PEM block: %w", err)
+	}
+	return nil
+}
+
+// SignCertificate signs an existing certificate with a CA
+func SignCertificate(config *SignConfig) error {
+	progress := NewGenerationProgress("Certificate Signing", !config.NoProgress)
+	defer progress.Complete()
+
+	if err := config.Validate(); err != nil {
+		return fmt.Errorf("invalid signing configuration: %w", err)
+	}
+
+	// Load the certificate to be signed
+	progress.StartLoading()
+	certPEM, err := os.ReadFile(config.CertPath)
+	if err != nil {
+		return fmt.Errorf("failed to read certificate: %w", err)
+	}
+
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return fmt.Errorf("failed to decode certificate")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse certificate: %w", err)
+	}
+	progress.CompleteLoading()
+
+	// Load the certificate's private key
+	progress.StartKeyLoading()
+	keyPEM, err := os.ReadFile(config.KeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	block, _ = pem.Decode(keyPEM)
+	if block == nil {
+		return fmt.Errorf("failed to decode private key")
+	}
+
+	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+	progress.CompleteKeyLoading()
+
+	// Load CA certificate and private key
+	progress.StartCALoading()
+	caCert, caKey, err := loadCA(config.CACertPath, config.CAKeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to load CA: %w", err)
+	}
+	progress.CompleteCALoading()
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Sign the certificate
+	progress.StartSigning()
+	certDER, err := x509.CreateCertificate(rand.Reader, cert, caCert, &privKey.(*rsa.PrivateKey).PublicKey, caKey)
+	if err != nil {
+		return fmt.Errorf("failed to sign certificate: %w", err)
+	}
+	progress.CompleteSigning()
+
+	// Write the signed certificate
+	progress.StartSaving()
+	signedCertPath := filepath.Join(config.OutputDir, "signed.crt")
+	if err := writePEM(signedCertPath, "CERTIFICATE", certDER); err != nil {
+		return fmt.Errorf("failed to write signed certificate: %w", err)
+	}
+	progress.CompleteSaving()
 
 	return nil
 }

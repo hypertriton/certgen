@@ -27,6 +27,11 @@ dnsNames:
   - "*.example.com"
   - "www.example.com"
 
+# CA Signing Information
+# Path to the CA certificate and private key
+caCert: "certs/ca.crt"
+caKey: "certs/ca.key"
+
 # Output Directory
 outputDir: "certs"
 

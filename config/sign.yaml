@@ -1,0 +1,20 @@
+# Certificate Signing Configuration
+# This file configures the settings for signing an existing certificate with a CA
+
+# Path to the certificate to be signed
+certPath: "certs/cert.crt"
+
+# Path to the certificate's private key
+keyPath: "certs/cert.key"
+
+# Path to the CA certificate
+caCertPath: "certs/ca.crt"
+
+# Path to the CA private key
+caKeyPath: "certs/ca.key"
+
+# Output directory for the signed certificate
+outputDir: "certs"
+
+# Optional: Disable progress display
+# noProgress: false 

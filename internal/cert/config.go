@@ -2,6 +2,7 @@ package cert
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -59,6 +60,18 @@ type CertConfig struct {
 	OutputDir          string           `yaml:"outputDir"`
 	NoProgress         bool             `yaml:"-"` // Not serialized to YAML
 	Class              CertificateClass `yaml:"class"`
+	CACert             string           `yaml:"caCert"` // Path to CA certificate
+	CAKey              string           `yaml:"caKey"`  // Path to CA private key
+}
+
+// SignConfig holds the configuration for signing a certificate
+type SignConfig struct {
+	CertPath   string `yaml:"certPath"`   // Path to the certificate to sign
+	KeyPath    string `yaml:"keyPath"`    // Path to the certificate's private key
+	CACertPath string `yaml:"caCertPath"` // Path to the CA certificate
+	CAKeyPath  string `yaml:"caKeyPath"`  // Path to the CA private key
+	OutputDir  string `yaml:"outputDir"`  // Output directory for the signed certificate
+	NoProgress bool   `yaml:"-"`          // Not serialized to YAML
 }
 
 // getClassRequirements returns the requirements for a certificate class
@@ -171,6 +184,69 @@ func (c *CertConfig) Validate() error {
 	// Set default DNS names
 	if len(c.DNSNames) == 0 {
 		c.DNSNames = []string{c.CommonName}
+	}
+
+	// Set default output directory
+	if c.OutputDir == "" {
+		c.OutputDir = "certs"
+	}
+	c.OutputDir = filepath.Clean(c.OutputDir)
+
+	// Validate CA certificate and key paths
+	if c.CACert == "" {
+		return fmt.Errorf("caCert path is required")
+	}
+	if c.CAKey == "" {
+		return fmt.Errorf("caKey path is required")
+	}
+
+	// Check if CA certificate exists
+	if _, err := os.Stat(c.CACert); os.IsNotExist(err) {
+		return fmt.Errorf("CA certificate not found at %s", c.CACert)
+	}
+
+	// Check if CA private key exists
+	if _, err := os.Stat(c.CAKey); os.IsNotExist(err) {
+		return fmt.Errorf("CA private key not found at %s", c.CAKey)
+	}
+
+	return nil
+}
+
+// Validate checks and sets default values for SignConfig
+func (c *SignConfig) Validate() error {
+	// Validate certificate paths
+	if c.CertPath == "" {
+		return fmt.Errorf("certPath is required")
+	}
+	if c.KeyPath == "" {
+		return fmt.Errorf("keyPath is required")
+	}
+	if c.CACertPath == "" {
+		return fmt.Errorf("caCertPath is required")
+	}
+	if c.CAKeyPath == "" {
+		return fmt.Errorf("caKeyPath is required")
+	}
+
+	// Check if certificate exists
+	if _, err := os.Stat(c.CertPath); os.IsNotExist(err) {
+		return fmt.Errorf("certificate not found at %s", c.CertPath)
+	}
+
+	// Check if certificate key exists
+	if _, err := os.Stat(c.KeyPath); os.IsNotExist(err) {
+		return fmt.Errorf("certificate key not found at %s", c.KeyPath)
+	}
+
+	// Check if CA certificate exists
+	if _, err := os.Stat(c.CACertPath); os.IsNotExist(err) {
+		return fmt.Errorf("CA certificate not found at %s", c.CACertPath)
+	}
+
+	// Check if CA private key exists
+	if _, err := os.Stat(c.CAKeyPath); os.IsNotExist(err) {
+		return fmt.Errorf("CA private key not found at %s", c.CAKeyPath)
 	}
 
 	// Set default output directory
